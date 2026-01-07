@@ -1,65 +1,131 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { GlassCard } from '@/components/ui/GlassCard';
+
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      {/* Hero Section */}
+      <motion.div
+        className="text-center mb-12"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <motion.div
+          className="text-8xl mb-6"
+          animate={{
+            rotate: [0, 5, -5, 0],
+            scale: [1, 1.05, 1],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        >
+          🎪
+        </motion.div>
+
+        <h1 className="text-5xl md:text-6xl font-bold mb-4">
+          <span className="text-gradient">Gánh Hát Lô Tô</span>
+        </h1>
+
+        <p className="text-xl text-[var(--text-secondary)] max-w-md mx-auto">
+          Trải nghiệm Lô Tô hội chợ truyền thống Việt Nam ngay trên điện thoại
+        </p>
+      </motion.div>
+
+      {/* Action Cards */}
+      <div className="grid gap-6 md:grid-cols-2 w-full max-w-2xl">
+        {/* Host Card */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Link href="/host" className="block">
+            <GlassCard className="text-center py-8 cursor-pointer group">
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">
+                👑
+              </div>
+              <h2 className="text-2xl font-bold mb-2 text-[var(--neon-gold)]">
+                Tạo Phòng
+              </h2>
+              <p className="text-[var(--text-secondary)]">
+                Làm chủ đài, quay số và rao vui
+              </p>
+            </GlassCard>
+          </Link>
+        </motion.div>
+
+        {/* Player Card */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Link href="/play" className="block">
+            <GlassCard className="text-center py-8 cursor-pointer group">
+              <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">
+                🎟️
+              </div>
+              <h2 className="text-2xl font-bold mb-2 text-[var(--neon-cyan)]">
+                Vào Phòng
+              </h2>
+              <p className="text-[var(--text-secondary)]">
+                Tham gia chơi, mua vé, hô kinh
+              </p>
+            </GlassCard>
+          </Link>
+        </motion.div>
+      </div>
+
+      {/* Features */}
+      <motion.div
+        className="mt-16 text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <h3 className="text-lg font-semibold text-[var(--text-secondary)] mb-6">
+          Tính năng nổi bật
+        </h3>
+
+        <div className="flex flex-wrap justify-center gap-4 max-w-lg">
+          {[
+            { icon: '🔊', text: 'Hát rao tự động' },
+            { icon: '📱', text: 'Chơi trên điện thoại' },
+            { icon: '🎯', text: 'Dò số tự động' },
+            { icon: '🏆', text: 'Xác nhận thắng' },
+            { icon: '👥', text: 'Nhiều người chơi' },
+            { icon: '🔗', text: 'Chia sẻ mã QR' },
+          ].map((feature, idx) => (
+            <motion.div
+              key={idx}
+              className="glass px-4 py-2 text-sm"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.6 + idx * 0.1 }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <span className="mr-2">{feature.icon}</span>
+              {feature.text}
+            </motion.div>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </motion.div>
+
+      {/* Footer */}
+      <motion.footer
+        className="mt-16 text-center text-sm text-[var(--text-muted)]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+      >
+        <p>Trò chơi giải trí gia đình • Không cá cược • Miễn phí</p>
+      </motion.footer>
     </div>
   );
 }
