@@ -23,6 +23,7 @@ interface UseAudioReturn {
     setBGMVolume: (volume: number) => void;
     setEffectsVolume: (volume: number) => void;
     toggleMute: () => void;
+    setMetadata: (metadata: any) => void;
 }
 
 export function useAudio(): UseAudioReturn {
@@ -133,6 +134,11 @@ export function useAudio(): UseAudioReturn {
         setIsMuted(muted);
     }, []);
 
+    // Set Metadata
+    const setMetadata = useCallback((metadata: any) => {
+        managerRef.current?.setMetadata(metadata);
+    }, []);
+
     return {
         isInitialized,
         isLoading,
@@ -150,6 +156,7 @@ export function useAudio(): UseAudioReturn {
         setBGMVolume,
         setEffectsVolume,
         toggleMute,
+        setMetadata,
     };
 }
 

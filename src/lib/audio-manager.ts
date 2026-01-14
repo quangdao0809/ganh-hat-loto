@@ -2,6 +2,7 @@
 // Uses Howler.js for audio playback with IndexedDB caching
 
 import { Howl, Howler } from 'howler';
+import { AUDIO_METADATA } from './audio-metadata';
 
 export interface AudioManagerConfig {
     basePath: string;
@@ -19,6 +20,13 @@ export interface LoadingProgress {
 }
 
 export type PlayMode = 'singing' | 'calling';
+
+export interface AudioMetadata {
+    revealOffset?: number; // Time in seconds to reveal before audio ends
+    duration?: number;     // Override actual file duration
+}
+
+export type MetadataMap = Record<number, AudioMetadata | Record<number, AudioMetadata>>; // number -> metadata OR number -> (variant -> metadata)
 
 // Default configuration
 const defaultConfig: AudioManagerConfig = {
@@ -55,8 +63,32 @@ class AudioManager {
     private revealLoopActive: boolean = false;
     private numberAudioReady: boolean = false;
 
+    private metadata: MetadataMap = AUDIO_METADATA;
+
     constructor(config: Partial<AudioManagerConfig> = {}) {
         this.config = { ...defaultConfig, ...config };
+    }
+
+    /**
+     * Set explicit metadata for reveal timing
+     */
+    setMetadata(metadata: MetadataMap): void {
+        this.metadata = metadata;
+    }
+
+    /**
+     * Get metadata for a specific number and optionally a variant
+     */
+    private getMetadata(number: number, variant?: number): AudioMetadata | null {
+        const entry = this.metadata[number];
+        if (!entry) return null;
+
+        if (variant !== undefined) {
+            const variantEntry = (entry as Record<number, AudioMetadata>)[variant];
+            return variantEntry || null;
+        }
+
+        return (entry as AudioMetadata);
     }
 
     /**
@@ -227,6 +259,10 @@ class AudioManager {
             loop: true,
             volume: this.bgmVolume,
             preload: true,
+            onloaderror: (id, err) => {
+                console.warn('BGM load error:', err);
+                // Non-fatal, just log
+            }
         });
 
         // Load variants in background (non-blocking)
@@ -319,16 +355,50 @@ class AudioManager {
     /**
      * Play number announcement
      */
-    playNumber(number: number): Promise<void> {
+    playNumber(number: number, variant?: number): Promise<void> {
         return new Promise((resolve) => {
-            const sound = this.getNumberAudio(number);
+            let sound: Howl | null = null;
+            let currentVariant: number | undefined = variant;
+
+            if (variant !== undefined) {
+                sound = this.variantSounds.get(`${number}-${variant}`) || null;
+            } else {
+                // Try to pick a random variant and track which one it is
+                const variantCount = 5;
+                const available: { sound: Howl, v: number }[] = [];
+                for (let v = 1; v <= variantCount; v++) {
+                    const s = this.variantSounds.get(`${number}-${v}`);
+                    if (s) available.push({ sound: s, v });
+                }
+
+                if (available.length > 0) {
+                    const pick = available[Math.floor(Math.random() * available.length)];
+                    sound = pick.sound;
+                    currentVariant = pick.v;
+                } else {
+                    sound = this.essentialSounds.get(number) || null;
+                }
+            }
+
             if (!sound) {
                 resolve();
                 return;
             }
 
-            sound.once('end', () => resolve());
-            sound.play();
+            const metadata = this.getMetadata(number, currentVariant);
+
+            // If we have an offset and the sound is loaded, we can resolve early!
+            if (metadata?.revealOffset && sound.state() === 'loaded') {
+                const duration = metadata.duration || sound.duration();
+                const revealTime = Math.max(0, (duration - metadata.revealOffset) * 1000);
+
+                setTimeout(() => resolve(), revealTime);
+                sound.play();
+                // We don't resolve on 'end' here because we want to reveal EARLY
+            } else {
+                sound.once('end', () => resolve());
+                sound.play();
+            }
         });
     }
 

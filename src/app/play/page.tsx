@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket } from '@/hooks/useSocket';
@@ -24,6 +24,8 @@ function PlayerContent() {
     const [ticketCount, setTicketCount] = useState(1);
     const [kinhResult, setKinhResult] = useState<ValidationResult | null>(null);
     const [showTracker, setShowTracker] = useState(false);
+    const [revealedNumber, setRevealedNumber] = useState<number | null>(null);
+    const [revealedCalledNumbers, setRevealedCalledNumbers] = useState<number[]>([]);
 
     const {
         isConnected,
@@ -48,40 +50,55 @@ function PlayerContent() {
         playSpinSequence,
     } = useAudio();
 
-    // Auto restore session
+    // Sync revealed state with session data on initial load/restore
+    // IMPORTANT: This should only run when the room is first loaded or restored
+    // to prevent it from overriding the suspense reveal during gameplay.
+    const initialSyncRef = useRef(false);
     useEffect(() => {
-        const initSession = async () => {
-            if (isConnected && !room) {
-                // Try restore
-                const sessionData = await restoreSession();
-                if (sessionData && sessionData.tickets) {
-                    setTickets(sessionData.tickets);
-                }
-            }
-        };
-        initSession();
-    }, [isConnected, room, restoreSession]);
+        if (room?.status === 'playing' && !initialSyncRef.current) {
+            setRevealedCalledNumbers(calledNumbers);
+            setRevealedNumber(lastNumber);
+            initialSyncRef.current = true;
+        }
+    }, [room?.status, calledNumbers, lastNumber]);
 
-    // Handle winner event
+    // Handle audio sync with suspense reveal
     useEffect(() => {
-        onWinner((data) => {
-            setWinnerName(data.nickname);
-            setShowWinner(true);
-            // Check if it's my win (compare with local tickets)
-            const myTicketIds = tickets.map(t => t.id);
-            setIsMyWin(myTicketIds.includes(data.ticketId));
-            setTimeout(() => setShowWinner(false), 8000);
-        });
-    }, [onWinner, tickets]);
+        onAudioPlaySequence(async (number) => {
+            console.log(`🎵 Audio sequence starting for number: ${number}`);
 
-    // Handle audio sync
-    useEffect(() => {
-        onAudioPlaySequence((number) => {
+            // Safety timeout: 60s
+            const timeoutId = setTimeout(() => {
+                console.log(`⚠️ Suspense timeout hit for number: ${number}`);
+                setRevealedNumber(number);
+                setRevealedCalledNumbers(prev => {
+                    if (!prev.includes(number)) return [...prev, number];
+                    return prev;
+                });
+            }, 60000);
+
             if (isInitialized) {
-                playSpinSequence(number, room?.settings.audioMode || 'singing');
+                try {
+                    await playSpinSequence(number, room?.settings.audioMode || 'singing');
+                } catch (error) {
+                    console.error('Error playing spin sequence:', error);
+                }
+            } else {
+                // If audio not initialized (no user interaction), still wait for a fallback duration
+                // to maintain suspense for other observers or just to avoid immediate sync.
+                // For singing mode, wait ~5 seconds. For calling, wait ~1.5 seconds.
+                const waitTime = room?.settings.audioMode === 'singing' ? 5000 : 1500;
+                await new Promise(resolve => setTimeout(resolve, waitTime));
             }
+
+            clearTimeout(timeoutId);
+            setRevealedNumber(number);
+            setRevealedCalledNumbers(prev => {
+                if (!prev.includes(number)) return [...prev, number];
+                return prev;
+            });
         });
-    }, [onAudioPlaySequence, isInitialized, playSpinSequence]);
+    }, [onAudioPlaySequence, isInitialized, playSpinSequence, room?.settings.audioMode]);
 
     // Handle room closed
     useEffect(() => {
@@ -126,33 +143,51 @@ function PlayerContent() {
         }));
     }, [markNumber]);
 
-    // Auto-mark logic
     useEffect(() => {
-        if (!room?.settings.autoMarkNumbers || tickets.length === 0 || lastNumber === null) return;
+        if (!room?.settings.autoMarkNumbers || tickets.length === 0 || revealedNumber === null) return;
 
-        setTickets(prevTickets => prevTickets.map(ticket => {
-            // Deep clone to avoid mutation issues
-            const newTicket = JSON.parse(JSON.stringify(ticket));
-            let hasChanges = false;
+        setTickets(prevTickets => {
+            let evolved = false;
+            const nextTickets = prevTickets.map(ticket => {
+                let ticketChanged = false;
 
-            newTicket.grids.forEach((grid: any, gIndex: number) => {
-                grid.rows.forEach((row: any, rIndex: number) => {
-                    row.cells.forEach((cell: number | null, cIndex: number) => {
-                        if (cell === lastNumber && !row.marked[cIndex]) {
-                            row.marked[cIndex] = true;
-                            hasChanges = true;
-                            // Optionally emit to server if persistence is needed, 
-                            // but server usually trusts client 'call-kinh' validation.
-                            // For true state sync, we should emit markNumber here too.
-                            markNumber(ticket.id, gIndex, rIndex, cIndex);
+                // Instead of JSON.parse/stringify which kills Date objects, we clone manually where needed
+                const newGrids = ticket.grids.map((grid, gIndex) => {
+                    let gridChanged = false;
+                    const newRows = grid.rows.map((row, rIndex) => {
+                        let rowChanged = false;
+                        const cellIndex = row.cells.findIndex(cell => cell === revealedNumber);
+
+                        if (cellIndex !== -1 && !row.marked[cellIndex]) {
+                            rowChanged = true;
+                            // Update mark on server
+                            markNumber(ticket.id, gIndex, rIndex, cellIndex);
+
+                            const newMarked = [...row.marked];
+                            newMarked[cellIndex] = true;
+                            return { ...row, marked: newMarked };
                         }
+                        return row;
                     });
-                });
+
+                    if (newRows.some((r, idx) => r !== grid.rows[idx])) {
+                        gridChanged = true;
+                        return { ...grid, rows: newRows as [typeof newRows[0], typeof newRows[0], typeof newRows[0]] };
+                    }
+                    return grid;
+                }) as typeof ticket.grids;
+
+                if (newGrids.some((g, idx) => g !== ticket.grids[idx])) {
+                    ticketChanged = true;
+                    evolved = true;
+                    return { ...ticket, grids: newGrids };
+                }
+                return ticket;
             });
 
-            return hasChanges ? newTicket : ticket;
-        }));
-    }, [lastNumber, room?.settings.autoMarkNumbers, markNumber]);
+            return evolved ? nextTickets : prevTickets;
+        });
+    }, [revealedNumber, room?.settings.autoMarkNumbers, markNumber]);
 
     // Call kinh handler
     const handleCallKinh = useCallback(async (ticketId: string, gridIndex: number, rowIndex: number) => {
@@ -214,17 +249,17 @@ function PlayerContent() {
             <GlassCard className="text-center py-6 mb-4" hover={false}>
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={lastNumber ?? 'empty'}
+                        key={revealedNumber ?? 'empty'}
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                     >
-                        <NeonNumber number={lastNumber} size="lg" />
+                        <NeonNumber number={revealedNumber} size="lg" />
                     </motion.div>
                 </AnimatePresence>
 
                 <div className="mt-4 flex justify-center gap-4 text-sm text-[var(--text-muted)]">
-                    <span>Đã gọi: {calledNumbers.length}/89</span>
+                    <span>Đã gọi: {revealedCalledNumbers.length}/89</span>
                     {room.status === 'waiting' && (
                         <span className="text-[var(--neon-cyan)]">Chờ bắt đầu...</span>
                     )}
@@ -255,7 +290,7 @@ function PlayerContent() {
                         exit={{ opacity: 0, height: 0 }}
                         className="mb-4"
                     >
-                        <NumberTracker calledNumbers={calledNumbers} lastNumber={lastNumber} />
+                        <NumberTracker calledNumbers={revealedCalledNumbers} lastNumber={revealedNumber} />
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -323,7 +358,7 @@ function PlayerContent() {
                             <LotoTicket
                                 key={ticket.id}
                                 ticket={ticket}
-                                calledNumbers={calledNumbers}
+                                calledNumbers={revealedCalledNumbers}
                                 onMarkNumber={(grid, row, index) => handleMarkNumber(ticket.id, grid, row, index)}
                                 onCallKinh={(grid, row) => handleCallKinh(ticket.id, grid, row)}
                                 autoMark={room.settings?.autoMarkNumbers ?? true}

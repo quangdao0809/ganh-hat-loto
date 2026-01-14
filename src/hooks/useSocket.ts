@@ -150,7 +150,9 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
         if (!stored) return null;
 
         try {
-            const { roomCode, oderId } = JSON.parse(stored);
+            const sessionObj = JSON.parse(stored);
+            if (!sessionObj || !sessionObj.roomCode || !sessionObj.oderId) return null;
+            const { roomCode, oderId } = sessionObj;
 
             return new Promise((resolve) => {
                 socket.emit('room:rejoin', roomCode, oderId, (data: {
