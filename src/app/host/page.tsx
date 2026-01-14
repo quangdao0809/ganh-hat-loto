@@ -17,6 +17,12 @@ export default function HostPage() {
     const [nickname, setNickname] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const [audioMode, setAudioMode] = useState<'singing' | 'calling'>('singing');
+    const [roomSettings, setRoomSettings] = useState({
+        maxTicketsPerPlayer: 4,
+        autoCall: false,
+        callSpeed: 5,
+        checkMode: 'manual' as 'manual' | 'auto'
+    });
     const [showWinner, setShowWinner] = useState(false);
     const [winnerInfo, setWinnerInfo] = useState<{ nickname: string; row: number } | null>(null);
     const [isSpinning, setIsSpinning] = useState(false);
@@ -78,7 +84,10 @@ export default function HostPage() {
 
         setIsCreating(true);
         await initialize();
-        await createRoom(nickname.trim(), { audioMode });
+        await createRoom(nickname.trim(), {
+            audioMode,
+            ...roomSettings
+        });
         setIsCreating(false);
     };
 
@@ -164,6 +173,92 @@ export default function HostPage() {
                                     <span className="text-xl">📢</span>
                                     <span className="font-semibold text-sm">Chỉ Gọi Số</span>
                                 </button>
+                            </div>
+                        </div>
+
+                        {/* Quick Settings */}
+                        <div className="space-y-4 pt-4 border-t border-[var(--border)]">
+                            <h3 className="font-semibold text-[var(--text-secondary)]">Thiết lập nhanh</h3>
+
+                            {/* Tickets per player */}
+                            <div>
+                                <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                    Số vé tối đa mỗi người: <span className="text-[var(--neon-gold)] font-bold">{roomSettings.maxTicketsPerPlayer}</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="10"
+                                    className="w-full"
+                                    value={roomSettings.maxTicketsPerPlayer}
+                                    onChange={(e) => setRoomSettings(prev => ({ ...prev, maxTicketsPerPlayer: parseInt(e.target.value) }))}
+                                />
+                                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                                    <span>1 vé</span>
+                                    <span>10 vé</span>
+                                </div>
+                            </div>
+
+                            {/* Auto Call */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-[var(--text-muted)]">Tự động gọi số</span>
+                                <button
+                                    onClick={() => setRoomSettings(prev => ({ ...prev, autoCall: !prev.autoCall }))}
+                                    className={`relative w-12 h-6 rounded-full transition-colors ${roomSettings.autoCall ? 'bg-[var(--neon-gold)]' : 'bg-[var(--surface-hover)]'
+                                        }`}
+                                >
+                                    <span className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${roomSettings.autoCall ? 'translate-x-6' : ''
+                                        }`} />
+                                </button>
+                            </div>
+
+                            {/* Call Speed (only if Auto Call is on) */}
+                            {roomSettings.autoCall && (
+                                <div className="pl-4 border-l-2 border-[var(--border)]">
+                                    <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                        Tốc độ gọi: <span className="text-[var(--neon-gold)] font-bold">{roomSettings.callSpeed}s/con</span>
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="2"
+                                        max="10"
+                                        step="1"
+                                        className="w-full"
+                                        value={roomSettings.callSpeed}
+                                        onChange={(e) => setRoomSettings(prev => ({ ...prev, callSpeed: parseInt(e.target.value) }))}
+                                    />
+                                    <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                                        <span>Nhanh (2s)</span>
+                                        <span>Chậm (10s)</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Check Mode */}
+                            <div>
+                                <label className="block text-sm text-[var(--text-muted)] mb-2">
+                                    Chế độ dò
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => setRoomSettings(prev => ({ ...prev, checkMode: 'manual' }))}
+                                        className={`p-2 rounded-lg border text-sm transition-all ${roomSettings.checkMode === 'manual'
+                                            ? 'bg-[var(--surface-hover)] border-[var(--neon-blue)] text-[var(--neon-blue)]'
+                                            : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]'
+                                            }`}
+                                    >
+                                        🖐 Thủ công
+                                    </button>
+                                    <button
+                                        onClick={() => setRoomSettings(prev => ({ ...prev, checkMode: 'auto' }))}
+                                        className={`p-2 rounded-lg border text-sm transition-all ${roomSettings.checkMode === 'auto'
+                                            ? 'bg-[var(--surface-hover)] border-[var(--neon-purple)] text-[var(--neon-purple)]'
+                                            : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]'
+                                            }`}
+                                    >
+                                        🤖 Tự động
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -344,7 +439,7 @@ export default function HostPage() {
                         <div className="space-y-2 max-h-40 overflow-y-auto">
                             {room.players.map((player, index) => (
                                 <div
-                                    key={player.id}
+                                    key={player.oderId}
                                     className="flex items-center gap-2 text-sm"
                                 >
                                     <span className={index === 0 ? 'text-[var(--neon-gold)]' : ''}>

@@ -8,7 +8,7 @@ import type { LotoTicket, TicketRow, TicketGrid, ValidationResult, CalledNumber 
  */
 export function generateNextNumber(calledNumbers: number[]): number | null {
     const available = [];
-    for (let i = 1; i <= 90; i++) {
+    for (let i = 1; i <= 89; i++) {
         if (!calledNumbers.includes(i)) {
             available.push(i);
         }
@@ -50,7 +50,7 @@ function generateGrid(roomId: string): TicketGrid {
     const gridNumbers: number[][] = []; // 9 columns
     const colRanges = [
         [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
-        [50, 59], [60, 69], [70, 79], [80, 90] // Last col 80-90 (11 nums)
+        [50, 59], [60, 69], [70, 79], [80, 89] // Last col 80-89
     ];
 
     for (let c = 0; c < 9; c++) {
@@ -177,7 +177,7 @@ export function generateTicket(roomId: string, ownerId: string): LotoTicket {
         id: uuidv4(),
         grids,
         ownerId,
-        roomId,
+        roomCode: roomId,
         createdAt: new Date(),
     };
 }
@@ -198,7 +198,7 @@ function generateUniqueGrid(exclude: Set<number>): TicketGrid | null {
     const gridNumbers: number[][] = [];
     const colRanges = [
         [1, 9], [10, 19], [20, 29], [30, 39], [40, 49],
-        [50, 59], [60, 69], [70, 79], [80, 90]
+        [50, 59], [60, 69], [70, 79], [80, 89]
     ];
 
     for (let c = 0; c < 9; c++) {
@@ -404,10 +404,10 @@ export function getGameStats(calledNumbers: CalledNumber[]): {
 } {
     return {
         totalCalled: calledNumbers.length,
-        remaining: 90 - calledNumbers.length, // Updated to 90
+        remaining: 89 - calledNumbers.length,
         lastNumber: calledNumbers.length > 0
             ? calledNumbers[calledNumbers.length - 1].number
             : null,
-        percentComplete: Math.round((calledNumbers.length / 90) * 100),
+        percentComplete: Math.round((calledNumbers.length / 89) * 100),
     };
 }

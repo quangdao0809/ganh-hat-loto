@@ -37,6 +37,7 @@ interface UseSocketReturn {
     onPlayerLeft: (handler: (playerId: string) => void) => void;
     onRoomClosed: (handler: () => void) => void;
     onAudioPlaySequence: (handler: (number: number) => void) => void;
+    onGameReset: (handler: () => void) => void;
     // New
     restoreSession: () => Promise<{ tickets: LotoTicket[] } | null>;
     clearSession: () => void;
@@ -59,6 +60,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
         onPlayerLeft?: (playerId: string) => void;
         onRoomClosed?: () => void;
         onAudioPlaySequence?: (number: number) => void;
+        onGameReset?: () => void;
     }>({});
 
     // Initialize socket connection
@@ -120,6 +122,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
         newSocket.on('game:reset', () => {
             setCalledNumbers([]);
             setLastNumber(null);
+            handlersRef.current.onGameReset?.();
         });
 
         setSocket(newSocket);
@@ -207,7 +210,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
                 if (hostPlayer) {
                     saveSession({
                         roomCode: newRoom.code,
-                        oderId: hostPlayer.id,
+                        oderId: hostPlayer.oderId,
                         nickname,
                         isHost: true
                     });
@@ -236,7 +239,7 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
                     if (myPlayer) {
                         saveSession({
                             roomCode: joinedRoom.code,
-                            oderId: myPlayer.id,
+                            oderId: myPlayer.oderId,
                             nickname,
                             isHost: false
                         });
@@ -376,6 +379,10 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
         handlersRef.current.onAudioPlaySequence = handler;
     }, []);
 
+    const onGameReset = useCallback((handler: () => void) => {
+        handlersRef.current.onGameReset = handler;
+    }, []);
+
     return {
         socket,
         isConnected,
@@ -396,10 +403,10 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
         onNumberCalled,
         onWinner,
         onKinhCalled,
-        onPlayerJoined,
         onPlayerLeft,
         onRoomClosed,
         onAudioPlaySequence,
+        onGameReset,
         restoreSession,
         clearSession,
     };

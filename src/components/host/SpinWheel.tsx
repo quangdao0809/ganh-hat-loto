@@ -45,34 +45,16 @@ export function SpinWheel({ onSpin, disabled = false, isSpinning = false }: Spin
             >
                 <span className="relative z-10 flex flex-col items-center justify-center w-full h-full p-2">
                     <AnimatePresence mode="wait">
-                        {isActive ? (
-                            <motion.div
-                                key="cage"
-                                initial={{ opacity: 0, scale: 0.5, rotate: -180 }}
-                                animate={{ opacity: 1, scale: 1.2, rotate: 0 }}
-                                exit={{ opacity: 0, scale: 0.5, rotate: 180 }}
-                                className="relative w-full h-full"
-                            >
-                                <Image
-                                    src="/audio/loto-cage.png"
-                                    alt="Lồng cầu"
-                                    fill
-                                    className="object-contain"
-                                    priority
-                                />
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="text"
-                                initial={{ opacity: 0, scale: 0.5 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.5 }}
-                                className="flex flex-col items-center"
-                            >
-                                <span className="text-3xl mb-1">🎱</span>
-                                <span>QUAY SỐ</span>
-                            </motion.div>
-                        )}
+                        <motion.div
+                            key={isActive ? "spinning" : "idle"}
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.5 }}
+                            className="flex flex-col items-center"
+                        >
+                            <span className="text-3xl mb-1">🎱</span>
+                            <span>{isActive ? "" : "QUAY SỐ"}</span>
+                        </motion.div>
                     </AnimatePresence>
                 </span>
             </motion.button>

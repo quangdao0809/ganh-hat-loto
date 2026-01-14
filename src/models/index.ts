@@ -12,7 +12,9 @@ export interface IRoom extends Document {
         maxPlayers: number;
         ticketsPerPlayer: number;
         autoMarkNumbers: boolean;
+        audioMode: 'singing' | 'calling';
     };
+    players: IPlayer[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -29,9 +31,15 @@ const roomSchema = new Schema<IRoom>(
         },
         settings: {
             maxPlayers: { type: Number, default: 50 },
-            ticketsPerPlayer: { type: Number, default: 5 },
+            ticketsPerPlayer: { type: Number, default: 2 },
+            maxTicketsPerPlayer: { type: Number, default: 4 },
+            autoCall: { type: Boolean, default: false },
+            callSpeed: { type: Number, default: 5 },
+            checkMode: { type: String, enum: ['manual', 'auto'], default: 'manual' },
             autoMarkNumbers: { type: Boolean, default: true },
+            audioMode: { type: String, enum: ['singing', 'calling'], default: 'singing' },
         },
+        players: { type: [Schema.Types.Mixed], default: [] },
     },
     { timestamps: true }
 );
@@ -56,34 +64,35 @@ const playerSchema = new Schema<IPlayer>({
 });
 
 // Ticket Model
-export interface ITicketRow {
-    numbers: number[];
-    marked: boolean[];
+export interface ITicketGrid {
+    rows: {
+        cells: (number | null)[];
+        marked: boolean[];
+    }[];
 }
 
 export interface ITicket extends Document {
-    oderId: string;
+    id: string;
     roomCode: string;
-    sessionId?: string;
-    rows: ITicketRow[];
     ownerId: string;
+    grids: ITicketGrid[];
     createdAt: Date;
 }
 
-const ticketRowSchema = new Schema<ITicketRow>(
-    {
-        numbers: { type: [Number], required: true },
-        marked: { type: [Boolean], default: [false, false, false, false, false] },
-    },
-    { _id: false }
-);
+const ticketGridSchema = new Schema<ITicketGrid>({
+    rows: [
+        {
+            cells: { type: [Number], default: [null, null, null, null, null, null, null, null, null] },
+            marked: { type: [Boolean], default: [false, false, false, false, false, false, false, false, false] },
+        }
+    ]
+}, { _id: false });
 
 const ticketSchema = new Schema<ITicket>({
-    oderId: { type: String, required: true, unique: true },
+    id: { type: String, required: true, unique: true },
     roomCode: { type: String, required: true, index: true },
-    sessionId: { type: String },
-    rows: { type: [ticketRowSchema], required: true },
     ownerId: { type: String, required: true, index: true },
+    grids: [ticketGridSchema],
     createdAt: { type: Date, default: Date.now },
 });
 

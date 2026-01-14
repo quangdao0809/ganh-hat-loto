@@ -19,12 +19,12 @@ export interface LotoTicket {
   id: string;
   grids: TicketGrid[]; // 3 grids per ticket
   ownerId: string;
-  roomId: string;
+  roomCode: string;
   createdAt: Date;
 }
 
 export interface Player {
-  id: string;
+  oderId: string;
   nickname: string;
   socketId?: string;
   tickets: string[]; // ticket IDs
@@ -57,8 +57,12 @@ export interface Room {
 export interface RoomSettings {
   maxPlayers: number;
   ticketsPerPlayer: number;
-  autoMarkNumbers: boolean; // auto-mark numbers on player tickets
-  audioMode: 'singing' | 'calling'; // 'singing' = folk songs, 'calling' = just numbers
+  maxTicketsPerPlayer: number; // Added
+  autoCall: boolean;           // Added
+  callSpeed: number;           // Added (seconds)
+  checkMode: 'manual' | 'auto'; // Added
+  autoMarkNumbers: boolean;
+  audioMode: 'singing' | 'calling';
 }
 
 // Socket Events

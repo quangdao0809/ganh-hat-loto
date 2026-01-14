@@ -104,11 +104,11 @@ export function LotoTicket({
                                                 relative w-full aspect-[4/5] flex items-center justify-center text-sm md:text-base font-bold rounded-sm
                                                 transition-colors duration-200
                                                 ${isMarked
-                                                    ? 'bg-[var(--primary)] text-white shadow-inner'
+                                                    ? 'bg-yellow-400 text-black shadow-inner font-extrabold'
                                                     : 'bg-[var(--background)] text-[var(--foreground)] hover:bg-[var(--accent)]/10'}
                                                 ${isWinningRow && isMarked ? 'ring-2 ring-yellow-400 animate-pulse' : ''}
                                             `}
-                                            onClick={() => !autoMark && onMarkNumber(gridIndex, rowIndex, colIndex)}
+                                            onClick={() => onMarkNumber(gridIndex, rowIndex, colIndex)}
                                             whileTap={{ scale: 0.9 }}
                                         >
                                             {num}

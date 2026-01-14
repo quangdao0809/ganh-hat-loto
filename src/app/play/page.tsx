@@ -39,6 +39,7 @@ function PlayerContent() {
         onWinner,
         onAudioPlaySequence,
         onRoomClosed,
+        onGameReset,
         restoreSession,
         leaveRoom,
     } = useSocket();
@@ -100,12 +101,34 @@ function PlayerContent() {
         });
     }, [onAudioPlaySequence, isInitialized, playSpinSequence, room?.settings.audioMode]);
 
-    // Handle room closed
+    // Handle room closed & Game Reset
     useEffect(() => {
         onRoomClosed(() => {
             setTickets([]);
         });
-    }, [onRoomClosed]);
+
+        onGameReset(() => {
+            console.log('🔄 Game reset detected on player client');
+            setShowWinner(false);
+            setWinnerName('');
+            setIsMyWin(false);
+            setKinhResult(null);
+            setRevealedNumber(null);
+            setRevealedCalledNumbers([]);
+
+            // Reset ticket marks
+            setTickets(prev => prev.map(t => ({
+                ...t,
+                grids: t.grids.map(g => ({
+                    ...g,
+                    rows: g.rows.map(r => ({
+                        ...r,
+                        marked: r.marked.map(() => false)
+                    })) as [typeof g.rows[0], typeof g.rows[0], typeof g.rows[0]]
+                })) as typeof t.grids
+            })));
+        });
+    }, [onRoomClosed, onGameReset]);
 
     // Join handler
     const handleJoin = useCallback(async (code: string, nickname: string): Promise<boolean> => {
